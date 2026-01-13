@@ -17,7 +17,6 @@ import java.util.UUID;
 @RequestMapping("/api/v1/financial-health")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class FinancialHealthController {
 
     private final FinancialHealthAssessmentService assessmentService;
@@ -35,17 +34,20 @@ public class FinancialHealthController {
             FinancialHealthResponse response = mapToResponse(metrics);
 
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("Error calculating financial health", e);
+        } catch (Throwable e) {
+            log.error("CRITICAL ERROR in FinancialHealthController: ", e);
             // Return a safe default response to prevent frontend crash
             return ResponseEntity.ok(FinancialHealthResponse.builder()
-                    .userId(getUserIdFromAuth(authentication).toString())
+                    .userId(authentication != null ? authentication.getName() : "unknown")
                     .calculatedAt(java.time.LocalDate.now())
                     .overallScore(0)
                     .score(0)
-                    .status("UNKNOWN")
+                    .status("ERROR")
+                    .isAtRisk(true)
+                    .netWorth(FinancialHealthResponse.NetWorthData.builder().value(java.math.BigDecimal.ZERO)
+                            .rating("POOR").build())
                     .recommendations(java.util.Collections
-                            .singletonList("Không thể tính toán dữ liệu. Vui lòng kiểm tra lại giao dịch."))
+                            .singletonList("Hệ thống đang gặp sự cố tính toán. Vui lòng thử lại sau."))
                     .build());
         }
     }
